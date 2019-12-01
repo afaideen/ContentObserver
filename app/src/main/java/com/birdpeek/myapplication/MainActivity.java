@@ -13,7 +13,9 @@ import android.provider.ContactsContract;
 import android.util.Log;
 import android.widget.TextView;
 
+import java.sql.Timestamp;
 import java.util.ArrayList;
+import java.util.Calendar;
 
 
 public class MainActivity extends AppCompatActivity {
@@ -23,6 +25,7 @@ public class MainActivity extends AppCompatActivity {
     private int count;
     private boolean contactService;
     private TextView outputText;
+    private Calendar now;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -33,6 +36,15 @@ public class MainActivity extends AppCompatActivity {
         mContactCount = count;
 //        this.getContentResolver().registerContentObserver(ContactsContract.CommonDataKinds.Phone.CONTENT_URI, true, mObserver);
         this.getContentResolver().registerContentObserver(ContactsContract.Contacts.CONTENT_URI, true, mObserver);
+
+        //test time
+//        now = Calendar.getInstance();
+//        now.add(Calendar.MINUTE, -30);
+//        int time = (int) (System.currentTimeMillis());
+//        Timestamp mLastContactDeleteTime = new Timestamp(time);
+//        int time2 = (int) (System.currentTimeMillis() - 10000000);
+//        Timestamp mLastContactDeleteTime2 = new Timestamp(time2);
+//        int test = 1;
     }
 
     private int getContactCount() {
@@ -181,15 +193,18 @@ public class MainActivity extends AppCompatActivity {
             } else if (currentCount < mContactCount) {
                 // Delete Contact
                 Log.d("In","Delete");
+//                int time = (int) (System.currentTimeMillis() - 10000000);//~2hours back
+//                Timestamp mLastContactDeleteTime = new Timestamp(time);
+//                String ts =  mLastContactDeleteTime.toString();
 
-                final String WHERE_MODIFIED = "( "+ ContactsContract.RawContacts.DELETED + "=1 OR "+ ContactsContract.RawContacts.DIRTY + "=1 )";
+//                final String WHERE_MODIFIED = "( "+ ContactsContract.RawContacts.DELETED + "=1 OR "+ ContactsContract.RawContacts.DIRTY + "=1 )";
                 Cursor c = getContentResolver().query(ContactsContract.RawContacts.CONTENT_URI,
                         null,
                         "( deleted=1 )",
                         null,
+                        null,
                         null);
                 if (c.getCount() > 0) {
-
                     c.moveToLast();
                     name = c.getString(c.getColumnIndex(ContactsContract.Contacts.DISPLAY_NAME));
                     id = c.getString(c.getColumnIndex(ContactsContract.Contacts._ID));
@@ -197,20 +212,20 @@ public class MainActivity extends AppCompatActivity {
                     Log.d(TAG, "id: " + id);
                     ArrayList<String> phones = new ArrayList<String>();
 
-                    Cursor cursor = getContentResolver().query(
-                            ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
-                            null,
-                            ContactsContract.CommonDataKinds.Phone.CONTACT_ID +" = ?",
-                            new String[]{id}, null);
-
-                    while (cursor.moveToNext())
-                    {
-                        phoneNumber = cursor.getString(cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER));
-                        phones.add(phoneNumber);
-                        Log.d(TAG, "Phone Number: " + phoneNumber);
-                    }
-
-                    cursor.close();
+//                    Cursor cursor = getContentResolver().query(
+//                            ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
+//                            null,
+//                            ContactsContract.CommonDataKinds.Phone.CONTACT_ID +" = ?",
+//                            new String[]{id}, null);
+//
+//                    while (cursor.moveToNext())
+//                    {
+//                        phoneNumber = cursor.getString(cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER));
+//                        phones.add(phoneNumber);
+//                        Log.d(TAG, "Phone Number: " + phoneNumber);
+//                    }
+//
+//                    cursor.close();
 
 
                 }
