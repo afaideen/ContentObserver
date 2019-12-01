@@ -200,7 +200,7 @@ public class MainActivity extends AppCompatActivity {
     private ContentObserver mObserver = new ContentObserver(new Handler()) {
         @Override
         public void onChange(boolean selfChange) {
-            this.onChange(selfChange, null);
+//            this.onChange(selfChange, null);
         }
 
         @Override
@@ -261,7 +261,7 @@ public class MainActivity extends AppCompatActivity {
                 TimeZone.setDefault(TimeZone.getTimeZone("Asia/Kuala_Lumpur"));
                 long now = System.currentTimeMillis();
                 Timestamp tsnow = new Timestamp(now);
-                long timestamp = (long) (now - 10000000);//~2 hours back
+                long timestamp = (long) (now - 1000000);//~20 mins back
                 Timestamp ts = new Timestamp(timestamp);
                 Cursor c = getContentResolver().query(ContactsContract.DeletedContacts.CONTENT_URI, null, "contact_deleted_timestamp > ?", new String[]{String.valueOf(timestamp)}, "contact_deleted_timestamp DESC");
                 if (c.getCount() > 0) {
