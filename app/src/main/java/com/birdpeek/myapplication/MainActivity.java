@@ -258,22 +258,24 @@ public class MainActivity extends AppCompatActivity {
                 // Delete Contact
                 Log.d(TAG,"Delete");
 
-                Cursor c = getContentResolver().query(ContactsContract.DeletedContacts.CONTENT_URI, null, null, null, "contact_deleted_timestamp DESC");
-//                TimeZone.setDefault(TimeZone.getTimeZone("Asia/Kuala_Lumpur"));
-//                long now = System.currentTimeMillis();
-//                long timestamp = (long) (now - 1000000);
-//                Timestamp ts = new Timestamp(timestamp);
-//                Cursor c = getContentResolver().query(ContactsContract.DeletedContacts.CONTENT_URI, null, "contact_deleted_timestamp > ?", new String[]{String.valueOf(timestamp)}, "contact_deleted_timestamp DESC");
+                TimeZone.setDefault(TimeZone.getTimeZone("Asia/Kuala_Lumpur"));
+                long now = System.currentTimeMillis();
+                Timestamp tsnow = new Timestamp(now);
+                long timestamp = (long) (now - 10000000);//~2 hours back
+                Timestamp ts = new Timestamp(timestamp);
+                Cursor c = getContentResolver().query(ContactsContract.DeletedContacts.CONTENT_URI, null, "contact_deleted_timestamp > ?", new String[]{String.valueOf(timestamp)}, "contact_deleted_timestamp DESC");
                 if (c.getCount() > 0) {
-                    c.moveToFirst();
-                    id = c.getString(c.getColumnIndex("contact_id"));
-                    c = getContentResolver().query(ContactsContract.RawContacts.CONTENT_URI, null, "_id = ?", new String[]{id}, null);
-                    if (c.getCount() > 0) {
-                        c.moveToNext();
-                        name = c.getString(c.getColumnIndex(ContactsContract.Contacts.DISPLAY_NAME));
-                        id = c.getString(c.getColumnIndex(ContactsContract.Contacts._ID));
-                        Log.d(TAG, "name: " + name);
-                        Log.d(TAG, "id: " + id);
+                    while(c.moveToNext()){
+                        id = c.getString(c.getColumnIndex("contact_id"));
+                        Log.d(TAG, "Deleted id: " + id);
+                        Cursor cursor = getContentResolver().query(ContactsContract.RawContacts.CONTENT_URI, null, "_id = ?", new String[]{id}, null);
+                        if (cursor.getCount() > 0) {
+                            cursor.moveToNext();
+                            name = cursor.getString(cursor.getColumnIndex(ContactsContract.Contacts.DISPLAY_NAME));
+                            id = cursor.getString(cursor.getColumnIndex(ContactsContract.Contacts._ID));
+                            Log.d(TAG, "name: " + name);
+                            Log.d(TAG, "id: " + id);
+                        }
                     }
 
                 }
