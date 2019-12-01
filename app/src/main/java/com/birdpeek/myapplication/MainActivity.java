@@ -158,7 +158,7 @@ public class MainActivity extends AppCompatActivity {
             if (currentCount > mContactCount) {
                 // Contact Added
                 Log.d("In","Add");
-                final String WHERE_MODIFIED = "( "+ ContactsContract.RawContacts.DELETED + "=1 OR "+ ContactsContract.RawContacts.DIRTY + "=1 )";
+//                final String WHERE_MODIFIED = "( "+ ContactsContract.RawContacts.DELETED + "=1 OR "+ ContactsContract.RawContacts.DIRTY + "=1 )";
                 Cursor c = getContentResolver().query(ContactsContract.RawContacts.CONTENT_URI,
 
                         null,
@@ -193,11 +193,7 @@ public class MainActivity extends AppCompatActivity {
             } else if (currentCount < mContactCount) {
                 // Delete Contact
                 Log.d("In","Delete");
-//                int time = (int) (System.currentTimeMillis() - 10000000);//~2hours back
-//                Timestamp mLastContactDeleteTime = new Timestamp(time);
-//                String ts =  mLastContactDeleteTime.toString();
 
-//                final String WHERE_MODIFIED = "( "+ ContactsContract.RawContacts.DELETED + "=1 OR "+ ContactsContract.RawContacts.DIRTY + "=1 )";
                 Cursor c = getContentResolver().query(ContactsContract.RawContacts.CONTENT_URI,
                         null,
                         "( deleted=1 )",
@@ -205,34 +201,21 @@ public class MainActivity extends AppCompatActivity {
                         null,
                         null);
                 if (c.getCount() > 0) {
-                    c.moveToLast();
-                    name = c.getString(c.getColumnIndex(ContactsContract.Contacts.DISPLAY_NAME));
-                    id = c.getString(c.getColumnIndex(ContactsContract.Contacts._ID));
-                    Log.d(TAG, "name: " + name);
-                    Log.d(TAG, "id: " + id);
-                    ArrayList<String> phones = new ArrayList<String>();
+//                    c.moveToLast();
+                    while(c.moveToNext()) {
+                        name = c.getString(c.getColumnIndex(ContactsContract.Contacts.DISPLAY_NAME));
+                        id = c.getString(c.getColumnIndex(ContactsContract.Contacts._ID));
+                        Log.d(TAG, "name: " + name);
+                        Log.d(TAG, "id: " + id);
+                    }
 
-//                    Cursor cursor = getContentResolver().query(
-//                            ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
-//                            null,
-//                            ContactsContract.CommonDataKinds.Phone.CONTACT_ID +" = ?",
-//                            new String[]{id}, null);
-//
-//                    while (cursor.moveToNext())
-//                    {
-//                        phoneNumber = cursor.getString(cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER));
-//                        phones.add(phoneNumber);
-//                        Log.d(TAG, "Phone Number: " + phoneNumber);
-//                    }
-//
-//                    cursor.close();
 
 
                 }
             } else if (currentCount == mContactCount) {
                 // Update Contact
                 Log.d("In","Update");
-                final String WHERE_MODIFIED = "( "+ ContactsContract.RawContacts.DELETED + "=1 OR "+ ContactsContract.RawContacts.DIRTY + "=1 )";
+//                final String WHERE_MODIFIED = "( "+ ContactsContract.RawContacts.DELETED + "=1 OR "+ ContactsContract.RawContacts.DIRTY + "=1 )";
                 Cursor c = getContentResolver().query(ContactsContract.RawContacts.CONTENT_URI, null, "( dirty=1 )", null, null);
 //                Cursor c = getContentResolver().query(ContactsContract.Contacts.CONTENT_URI, null, null, null, null);
                 if (c.getCount() > 0) {
