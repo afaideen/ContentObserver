@@ -1,40 +1,57 @@
 package com.birdpeek.myapplication;
 
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 
+import android.annotation.TargetApi;
 import android.content.ContentResolver;
+import android.content.DialogInterface;
+import android.content.pm.PackageManager;
 import android.database.ContentObserver;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.AsyncTask;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.provider.ContactsContract;
 import android.util.Log;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.TimeZone;
 
 
 public class MainActivity extends AppCompatActivity {
 
-    private static final String TAG = "debug";
+    private static final String TAG = "#debug";
     private int mContactCount;
     private int count;
     private boolean contactService;
     private TextView outputText;
     private Calendar now;
+    public static final int PERMISSIONS_REQUEST_READ_CONTACTS = 1;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         outputText = (TextView)findViewById(R.id.outputText);
+        requestContactPermission();
+
+
+    }
+
+    private void getContacts() {
+
+        Toast.makeText(this, "Get contacts ....", Toast.LENGTH_LONG).show();
         count = getContactCount();
         mContactCount = count;
-//        this.getContentResolver().registerContentObserver(ContactsContract.CommonDataKinds.Phone.CONTENT_URI, true, mObserver);
         this.getContentResolver().registerContentObserver(ContactsContract.Contacts.CONTENT_URI, true, mObserver);
 
         //test time
@@ -47,10 +64,57 @@ public class MainActivity extends AppCompatActivity {
 //        int test = 1;
     }
 
+    public void requestContactPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) {
+                if (ActivityCompat.shouldShowRequestPermissionRationale(this,
+                        android.Manifest.permission.READ_CONTACTS)) {
+                    AlertDialog.Builder builder = new AlertDialog.Builder(this);
+                    builder.setTitle("Read Contacts permission");
+                    builder.setPositiveButton(android.R.string.ok, null);
+                    builder.setMessage("Please enable access to contacts.");
+                    builder.setOnDismissListener(new DialogInterface.OnDismissListener() {
+                        @TargetApi(Build.VERSION_CODES.M)
+                        @Override
+                        public void onDismiss(DialogInterface dialog) {
+                            requestPermissions(
+                                    new String[]
+                                            {android.Manifest.permission.READ_CONTACTS}
+                                    , PERMISSIONS_REQUEST_READ_CONTACTS);
+                        }
+                    });
+                    builder.show();
+                } else {
+                    ActivityCompat.requestPermissions(this,
+                            new String[]{android.Manifest.permission.READ_CONTACTS},
+                            PERMISSIONS_REQUEST_READ_CONTACTS);
+                }
+            } else {
+                getContacts();
+            }
+        } else {
+            getContacts();
+        }
+    }
+    @Override
+    public void onRequestPermissionsResult(int requestCode,
+                                           String permissions[], int[] grantResults) {
+        switch (requestCode) {
+            case PERMISSIONS_REQUEST_READ_CONTACTS: {
+                if (grantResults.length > 0
+                        && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    getContacts();
+                } else {
+                    Toast.makeText(this, "You have disabled a contacts permission", Toast.LENGTH_LONG).show();
+                }
+                return;
+            }
+        }
+    }
+
     private int getContactCount() {
         Cursor cursor = null;
         try {
-//            cursor = getContentResolver().query(ContactsContract.CommonDataKinds.Phone.CONTENT_URI, null, null, null, null);
             cursor = this.getContentResolver().query(ContactsContract.Contacts.CONTENT_URI, null, null, null, null);
             if (cursor != null) {
 //                showContact(cursor);
@@ -158,7 +222,7 @@ public class MainActivity extends AppCompatActivity {
             if (currentCount > mContactCount) {
                 // Contact Added
                 Log.d("In","Add");
-                final String WHERE_MODIFIED = "( "+ ContactsContract.RawContacts.DELETED + "=1 OR "+ ContactsContract.RawContacts.DIRTY + "=1 )";
+//                final String WHERE_MODIFIED = "( "+ ContactsContract.RawContacts.DELETED + "=1 OR "+ ContactsContract.RawContacts.DIRTY + "=1 )";
                 Cursor c = getContentResolver().query(ContactsContract.RawContacts.CONTENT_URI,
 
                         null,
@@ -192,47 +256,33 @@ public class MainActivity extends AppCompatActivity {
                 }
             } else if (currentCount < mContactCount) {
                 // Delete Contact
-                Log.d("In","Delete");
-//                int time = (int) (System.currentTimeMillis() - 10000000);//~2hours back
-//                Timestamp mLastContactDeleteTime = new Timestamp(time);
-//                String ts =  mLastContactDeleteTime.toString();
+                Log.d(TAG,"Delete");
 
-//                final String WHERE_MODIFIED = "( "+ ContactsContract.RawContacts.DELETED + "=1 OR "+ ContactsContract.RawContacts.DIRTY + "=1 )";
-                Cursor c = getContentResolver().query(ContactsContract.RawContacts.CONTENT_URI,
-                        null,
-                        "( deleted=1 )",
-                        null,
-                        null,
-                        null);
+                Cursor c = getContentResolver().query(ContactsContract.DeletedContacts.CONTENT_URI, null, null, null, "contact_deleted_timestamp DESC");
+//                TimeZone.setDefault(TimeZone.getTimeZone("Asia/Kuala_Lumpur"));
+//                long now = System.currentTimeMillis();
+//                long timestamp = (long) (now - 1000000);
+//                Timestamp ts = new Timestamp(timestamp);
+//                Cursor c = getContentResolver().query(ContactsContract.DeletedContacts.CONTENT_URI, null, "contact_deleted_timestamp > ?", new String[]{String.valueOf(timestamp)}, "contact_deleted_timestamp DESC");
                 if (c.getCount() > 0) {
-                    c.moveToLast();
-                    name = c.getString(c.getColumnIndex(ContactsContract.Contacts.DISPLAY_NAME));
-                    id = c.getString(c.getColumnIndex(ContactsContract.Contacts._ID));
-                    Log.d(TAG, "name: " + name);
-                    Log.d(TAG, "id: " + id);
-                    ArrayList<String> phones = new ArrayList<String>();
-
-//                    Cursor cursor = getContentResolver().query(
-//                            ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
-//                            null,
-//                            ContactsContract.CommonDataKinds.Phone.CONTACT_ID +" = ?",
-//                            new String[]{id}, null);
-//
-//                    while (cursor.moveToNext())
-//                    {
-//                        phoneNumber = cursor.getString(cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER));
-//                        phones.add(phoneNumber);
-//                        Log.d(TAG, "Phone Number: " + phoneNumber);
-//                    }
-//
-//                    cursor.close();
-
+                    c.moveToFirst();
+                    id = c.getString(c.getColumnIndex("contact_id"));
+                    c = getContentResolver().query(ContactsContract.RawContacts.CONTENT_URI, null, "_id = ?", new String[]{id}, null);
+                    if (c.getCount() > 0) {
+                        c.moveToNext();
+                        name = c.getString(c.getColumnIndex(ContactsContract.Contacts.DISPLAY_NAME));
+                        id = c.getString(c.getColumnIndex(ContactsContract.Contacts._ID));
+                        Log.d(TAG, "name: " + name);
+                        Log.d(TAG, "id: " + id);
+                    }
 
                 }
+
+
             } else if (currentCount == mContactCount) {
                 // Update Contact
                 Log.d("In","Update");
-                final String WHERE_MODIFIED = "( "+ ContactsContract.RawContacts.DELETED + "=1 OR "+ ContactsContract.RawContacts.DIRTY + "=1 )";
+//                final String WHERE_MODIFIED = "( "+ ContactsContract.RawContacts.DELETED + "=1 OR "+ ContactsContract.RawContacts.DIRTY + "=1 )";
                 Cursor c = getContentResolver().query(ContactsContract.RawContacts.CONTENT_URI, null, "( dirty=1 )", null, null);
 //                Cursor c = getContentResolver().query(ContactsContract.Contacts.CONTENT_URI, null, null, null, null);
                 if (c.getCount() > 0) {
