@@ -24,6 +24,8 @@ import android.widget.Toast;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.List;
+import java.util.ListIterator;
 import java.util.TimeZone;
 
 
@@ -36,6 +38,8 @@ public class MainActivity extends AppCompatActivity {
     private TextView outputText;
     private Calendar now;
     public static final int PERMISSIONS_REQUEST_READ_CONTACTS = 1;
+    private List<MyContact> list;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -50,18 +54,12 @@ public class MainActivity extends AppCompatActivity {
     private void getContacts() {
 
         Toast.makeText(this, "Get contacts ....", Toast.LENGTH_LONG).show();
+        Cursor cursor = this.getContentResolver().query(ContactsContract.Contacts.CONTENT_URI, null, null, null, null);
+        showContact(cursor);
         count = getContactCount();
         mContactCount = count;
         this.getContentResolver().registerContentObserver(ContactsContract.Contacts.CONTENT_URI, true, mObserver);
 
-        //test time
-//        now = Calendar.getInstance();
-//        now.add(Calendar.MINUTE, -30);
-//        int time = (int) (System.currentTimeMillis());
-//        Timestamp mLastContactDeleteTime = new Timestamp(time);
-//        int time2 = (int) (System.currentTimeMillis() - 10000000);
-//        Timestamp mLastContactDeleteTime2 = new Timestamp(time2);
-//        int test = 1;
     }
 
     public void requestContactPermission() {
@@ -151,6 +149,7 @@ public class MainActivity extends AppCompatActivity {
         StringBuffer output = new StringBuffer();
 
         ContentResolver contentResolver = getContentResolver();
+        list = new ArrayList<>();
         // Loop for every contact in the phone
         if (cursor.getCount() > 0) {
 
@@ -158,6 +157,11 @@ public class MainActivity extends AppCompatActivity {
 
                 String contact_id = cursor.getString(cursor.getColumnIndex( _ID ));
                 String name = cursor.getString(cursor.getColumnIndex( DISPLAY_NAME ));
+
+                MyContact contact = new MyContact();
+                contact._id = contact_id;
+                contact.name = name;
+                list.add(contact);
 
                 int hasPhoneNumber = Integer.parseInt(cursor.getString(cursor.getColumnIndex( HAS_PHONE_NUMBER )));
 
@@ -210,7 +214,8 @@ public class MainActivity extends AppCompatActivity {
     };
 
     private class changeInContact extends AsyncTask<String,Void,String> {
-        String name = null, id = null, phoneNumber = null;
+        String name = null, id = null, contact_id = null, phoneNumber = null, contact_deleted_timestamp=null;
+        private Timestamp time;
 
         @Override
         protected String doInBackground(String... arg0) {
@@ -221,7 +226,7 @@ public class MainActivity extends AppCompatActivity {
 
             if (currentCount > mContactCount) {
                 // Contact Added
-                Log.d("In","Add");
+                Log.d(TAG,"Add");
 //                final String WHERE_MODIFIED = "( "+ ContactsContract.RawContacts.DELETED + "=1 OR "+ ContactsContract.RawContacts.DIRTY + "=1 )";
                 Cursor c = getContentResolver().query(ContactsContract.RawContacts.CONTENT_URI,
 
@@ -238,11 +243,7 @@ public class MainActivity extends AppCompatActivity {
                     Log.d(TAG, "id: " + id);
                     ArrayList<String> phones = new ArrayList<String>();
 
-                    Cursor cursor = getContentResolver().query(
-                            ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
-                            null,
-                            ContactsContract.CommonDataKinds.Phone.CONTACT_ID +" = ?",
-                            new String[]{id}, null);
+                    Cursor cursor = getContentResolver().query(ContactsContract.CommonDataKinds.Phone.CONTENT_URI, null, ContactsContract.CommonDataKinds.Phone.CONTACT_ID +" = ?", new String[]{id}, null);
 
                     while (cursor.moveToNext())
                     {
@@ -250,7 +251,7 @@ public class MainActivity extends AppCompatActivity {
                         phones.add(phoneNumber);
                         Log.d(TAG, "Phone Number: " + phoneNumber);
                     }
-
+                    list.add(new MyContact(id, name));
                     cursor.close();
 
                 }
@@ -258,32 +259,46 @@ public class MainActivity extends AppCompatActivity {
                 // Delete Contact
                 Log.d(TAG,"Delete");
 
-                TimeZone.setDefault(TimeZone.getTimeZone("Asia/Kuala_Lumpur"));
+      /*          TimeZone.setDefault(TimeZone.getTimeZone("Asia/Kuala_Lumpur"));
                 long now = System.currentTimeMillis();
                 Timestamp tsnow = new Timestamp(now);
                 long timestamp = (long) (now - 1000000);//~20 mins back
                 Timestamp ts = new Timestamp(timestamp);
-                Cursor c = getContentResolver().query(ContactsContract.DeletedContacts.CONTENT_URI, null, "contact_deleted_timestamp > ?", new String[]{String.valueOf(timestamp)}, "contact_deleted_timestamp DESC");
+                Cursor c = getContentResolver().query(ContactsContract.DeletedContacts.CONTENT_URI, null, "contact_deleted_timestamp > ?", new String[]{String.valueOf(timestamp)}, "contact_deleted_timestamp DESC");*/
+                Cursor c = getContentResolver().query(ContactsContract.RawContacts.CONTENT_URI, null, "deleted = 1", null, null);
                 if (c.getCount() > 0) {
                     while(c.moveToNext()){
-                        id = c.getString(c.getColumnIndex("contact_id"));
-                        Log.d(TAG, "Deleted id: " + id);
-                        Cursor cursor = getContentResolver().query(ContactsContract.RawContacts.CONTENT_URI, null, "_id = ?", new String[]{id}, null);
-                        if (cursor.getCount() > 0) {
-                            cursor.moveToNext();
-                            name = cursor.getString(cursor.getColumnIndex(ContactsContract.Contacts.DISPLAY_NAME));
-                            id = cursor.getString(cursor.getColumnIndex(ContactsContract.Contacts._ID));
-                            Log.d(TAG, "name: " + name);
-                            Log.d(TAG, "id: " + id);
-                        }
-                    }
+//                        contact_id = c.getString(c.getColumnIndex("contact_id"));
+                        id = c.getString(c.getColumnIndex("_id"));
+                        name = c.getString(c.getColumnIndex("display_name"));
+                  /*      Cursor c1 = getContentResolver().query(ContactsContract.DeletedContacts.CONTENT_URI, null, null, null, null);
+                        while(c1.moveToNext()) {
+                            contact_id = c1.getString(c1.getColumnIndex("contact_id"));
+                            contact_deleted_timestamp = c1.getString(c1.getColumnIndex("contact_deleted_timestamp"));
+                            if (id.equals(contact_id)) {
+                                time = new Timestamp(Long.valueOf(contact_deleted_timestamp));
+                                break;
+                            }
+                        }*/
 
+                        Log.d(TAG, "id: " + id + " name: " + name);
+
+                        ListIterator<MyContact> iter = list.listIterator();
+                        while(iter.hasNext()){
+                            if(iter.next()._id.equals(id)){
+                                Log.d(TAG, "id: " + id + " Remove " + name + " from list");
+                                iter.remove();
+                            }
+                        }
+
+                    }
                 }
+
 
 
             } else if (currentCount == mContactCount) {
                 // Update Contact
-                Log.d("In","Update");
+                Log.d(TAG,"Update");
 //                final String WHERE_MODIFIED = "( "+ ContactsContract.RawContacts.DELETED + "=1 OR "+ ContactsContract.RawContacts.DIRTY + "=1 )";
                 Cursor c = getContentResolver().query(ContactsContract.RawContacts.CONTENT_URI, null, "( dirty=1 )", null, null);
 //                Cursor c = getContentResolver().query(ContactsContract.Contacts.CONTENT_URI, null, null, null, null);
@@ -315,6 +330,8 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
             mContactCount = currentCount;
+//            Cursor cursor = getContentResolver().query(ContactsContract.Contacts.CONTENT_URI, null, null, null, null);
+//            showContact(cursor);
             return "";
         }
 
@@ -322,6 +339,18 @@ public class MainActivity extends AppCompatActivity {
         protected void onPostExecute(String result) {
             contactService = false;
         } // End of post
+    }
+
+    private class MyContact {
+        public String _id,name;
+
+        public MyContact() {
+        }
+
+        public MyContact(String id, String name) {
+            _id = id;
+            this.name = name;
+        }
     }
 }
 
