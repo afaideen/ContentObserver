@@ -223,9 +223,12 @@ public class MainActivity extends AppCompatActivity {
             int currentCount = getContactCount();
 
 
-            if (currentCount > mContactCount) {
+            if (currentCount > mContactCount && currentCount == mContactCount) {
                 // Contact Added
-                Log.d(TAG,"Add");
+                if(currentCount > mContactCount)
+                    Log.d(TAG,"Add");
+                else
+                    Log.d(TAG,"Update");
 //                final String WHERE_MODIFIED = "( "+ ContactsContract.RawContacts.DELETED + "=1 OR "+ ContactsContract.RawContacts.DIRTY + "=1 )";
                 Cursor c = getContentResolver().query(ContactsContract.RawContacts.CONTENT_URI,
 
@@ -249,7 +252,8 @@ public class MainActivity extends AppCompatActivity {
                         phones.add(phoneNumber);
                         Log.d(TAG, "Phone Number: " + phoneNumber);
                     }
-                    list.add(new MyContact(id, name));
+                    if(currentCount > mContactCount)
+                        list.add(new MyContact(id, name));
                     Log.d(TAG, "list size: " + list.size());
                     cursor.close();
 
@@ -261,7 +265,6 @@ public class MainActivity extends AppCompatActivity {
                 Cursor c = getContentResolver().query(ContactsContract.RawContacts.CONTENT_URI, null, "deleted = 1", null, null);
                 if (c.getCount() > 0) {
                     while(c.moveToNext()){
-//                        contact_id = c.getString(c.getColumnIndex("contact_id"));
                         id = c.getString(c.getColumnIndex("_id"));
                         name = c.getString(c.getColumnIndex("display_name"));
                         time = new Timestamp(0);
@@ -270,11 +273,8 @@ public class MainActivity extends AppCompatActivity {
                             c1.moveToNext();
                             contact_id = c1.getString(c1.getColumnIndex("contact_id"));
                             contact_deleted_timestamp = c1.getString(c1.getColumnIndex("contact_deleted_timestamp"));
+                            time = new Timestamp(Long.valueOf(contact_deleted_timestamp));
 
-                            if (id.equals(contact_id)) {
-                                time = new Timestamp(Long.valueOf(contact_deleted_timestamp));
-
-                            }
                         }
                         Log.d(TAG, "id: " + id + " name: " + name + " time: " + time.toString());
 
@@ -290,41 +290,9 @@ public class MainActivity extends AppCompatActivity {
                     }
                 }
 
-            } else if (currentCount == mContactCount) {
-                // Update Contact
-                Log.d(TAG,"Update");
-//                final String WHERE_MODIFIED = "( "+ ContactsContract.RawContacts.DELETED + "=1 OR "+ ContactsContract.RawContacts.DIRTY + "=1 )";
-                Cursor c = getContentResolver().query(ContactsContract.RawContacts.CONTENT_URI, null, "( dirty=1 )", null, null);
-//                Cursor c = getContentResolver().query(ContactsContract.Contacts.CONTENT_URI, null, null, null, null);
-                if (c.getCount() > 0) {
-
-                    c.moveToLast();
-                    name = c.getString(c.getColumnIndex("display_name"));
-                    id = c.getString(c.getColumnIndex("_id"));
-                    Log.d(TAG, "id: " + id + " name: " + name);
-                    ArrayList<String> phones = new ArrayList<String>();
-
-                    Cursor cursor = getContentResolver().query(
-                            ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
-                            null,
-                            ContactsContract.CommonDataKinds.Phone.CONTACT_ID +" = ?",
-                            new String[]{id}, null);
-
-                    while (cursor.moveToNext())
-                    {
-                        phoneNumber = cursor.getString(cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER));
-                        phones.add(phoneNumber);
-                        Log.d(TAG, "Phone Number: " + phoneNumber);
-                    }
-
-                    cursor.close();
-
-
-                }
             }
             mContactCount = currentCount;
-//            Cursor cursor = getContentResolver().query(ContactsContract.Contacts.CONTENT_URI, null, null, null, null);
-//            showContact(cursor);
+
             return "";
         }
 
