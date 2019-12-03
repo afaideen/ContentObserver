@@ -197,6 +197,7 @@ public class MainActivity extends AppCompatActivity {
             }
 
             outputText.setText(output);
+            Log.d(TAG, "Show contacts, list size: " + list.size());
         }
     }
 
@@ -223,7 +224,7 @@ public class MainActivity extends AppCompatActivity {
             int currentCount = getContactCount();
 
 
-            if (currentCount > mContactCount && currentCount == mContactCount) {
+            if (currentCount > mContactCount || currentCount == mContactCount) {
                 // Contact Added
                 if(currentCount > mContactCount)
                     Log.d(TAG,"Add");
@@ -253,9 +254,9 @@ public class MainActivity extends AppCompatActivity {
                         Log.d(TAG, "Phone Number: " + phoneNumber);
                     }
                     if(currentCount > mContactCount)
-                        list.add(new MyContact(id, name));
-                    Log.d(TAG, "list size: " + list.size());
+                        list.add(new MyContact(id, name));//add
                     cursor.close();
+                    Log.d(TAG, "list size: " + list.size());
 
                 }
             } else if (currentCount < mContactCount) {
@@ -265,6 +266,8 @@ public class MainActivity extends AppCompatActivity {
                 Cursor c = getContentResolver().query(ContactsContract.RawContacts.CONTENT_URI, null, "deleted = 1", null, null);
                 if (c.getCount() > 0) {
                     while(c.moveToNext()){
+
+
                         id = c.getString(c.getColumnIndex("_id"));
                         name = c.getString(c.getColumnIndex("display_name"));
                         time = new Timestamp(0);
@@ -283,6 +286,7 @@ public class MainActivity extends AppCompatActivity {
                             if(iter.next()._id.equals(id)){
                                 Log.d(TAG, "id: " + id + " Remove " + name + " from list");
                                 iter.remove();
+                                break;
                             }
                         }
                         Log.d(TAG, "list size: " + list.size());
