@@ -26,7 +26,6 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
 import java.util.ListIterator;
-import java.util.TimeZone;
 
 
 public class MainActivity extends AppCompatActivity {
@@ -38,7 +37,7 @@ public class MainActivity extends AppCompatActivity {
     private TextView outputText;
     private Calendar now;
     public static final int PERMISSIONS_REQUEST_READ_CONTACTS = 1;
-    private List<MyContact> list;
+    private List<MyContact> listContacts, listDeletedContact, listAddedOrUpdatedContact;
 
 
     @Override
@@ -148,7 +147,7 @@ public class MainActivity extends AppCompatActivity {
         StringBuffer output = new StringBuffer();
 
         ContentResolver contentResolver = getContentResolver();
-        list = new ArrayList<>();
+        listContacts = new ArrayList<>();
         // Loop for every contact in the phone
         if (cursor.getCount() > 0) {
 
@@ -160,7 +159,7 @@ public class MainActivity extends AppCompatActivity {
                 MyContact contact = new MyContact();
                 contact._id = contact_id;
                 contact.name = name;
-                list.add(contact);
+                listContacts.add(contact);
 
                 int hasPhoneNumber = Integer.parseInt(cursor.getString(cursor.getColumnIndex( HAS_PHONE_NUMBER )));
 
@@ -197,7 +196,7 @@ public class MainActivity extends AppCompatActivity {
             }
 
             outputText.setText(output);
-            Log.d(TAG, "Show contacts, list size: " + list.size());
+            Log.d(TAG, "Show contacts, listContacts size: " + listContacts.size());
         }
     }
 
@@ -217,6 +216,7 @@ public class MainActivity extends AppCompatActivity {
         String name = null, id = null, contact_id = null, phoneNumber = null, contact_deleted_timestamp=null;
         private Timestamp time;
 
+
         @Override
         protected String doInBackground(String... arg0) {
             ArrayList<Integer> arrayListContactID = new ArrayList<Integer>();
@@ -224,80 +224,111 @@ public class MainActivity extends AppCompatActivity {
             int currentCount = getContactCount();
 
 
-            if (currentCount > mContactCount || currentCount == mContactCount) {
+            if (currentCount >= mContactCount) {
                 // Contact Added
                 if(currentCount > mContactCount)
                     Log.d(TAG,"Add");
                 else
                     Log.d(TAG,"Update");
-//                final String WHERE_MODIFIED = "( "+ ContactsContract.RawContacts.DELETED + "=1 OR "+ ContactsContract.RawContacts.DIRTY + "=1 )";
-                Cursor c = getContentResolver().query(ContactsContract.RawContacts.CONTENT_URI,
-
-                        null,
-                        "( dirty=1 )",
-                        null,
-                        null);
-                if (c.getCount() > 0) {
-
-                    c.moveToLast();
-                    name = c.getString(c.getColumnIndex(ContactsContract.Contacts.DISPLAY_NAME));
-                    id = c.getString(c.getColumnIndex(ContactsContract.Contacts._ID));
-                    Log.d(TAG, "id: " + id + " name: " + name);
-                    ArrayList<String> phones = new ArrayList<String>();
-
-                    Cursor cursor = getContentResolver().query(ContactsContract.CommonDataKinds.Phone.CONTENT_URI, null, ContactsContract.CommonDataKinds.Phone.CONTACT_ID +" = ?", new String[]{id}, null);
-
-                    while (cursor.moveToNext())
-                    {
-                        phoneNumber = cursor.getString(cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER));
-                        phones.add(phoneNumber);
-                        Log.d(TAG, "Phone Number: " + phoneNumber);
-                    }
-                    if(currentCount > mContactCount)
-                        list.add(new MyContact(id, name));//add
-                    cursor.close();
-                    Log.d(TAG, "list size: " + list.size());
-
+                listAddedOrUpdatedContact = queryAddedOrUpdatedContact();
+                if(currentCount > mContactCount) {
+                    //only for add operation
+                    listContacts.addAll(listAddedOrUpdatedContact);//add
                 }
+
+
+                Log.d(TAG, "listContacts size: " + listContacts.size());
             } else if (currentCount < mContactCount) {
                 // Delete Contact
                 Log.d(TAG,"Delete");
+                listDeletedContact = queryDeletedContact();
+                listContacts = updateListContacts(listContacts, listDeletedContact);
 
-                Cursor c = getContentResolver().query(ContactsContract.RawContacts.CONTENT_URI, null, "deleted = 1", null, null);
-                if (c.getCount() > 0) {
-                    while(c.moveToNext()){
+                Log.d(TAG, "listContacts size: " + listContacts.size());
 
-
-                        id = c.getString(c.getColumnIndex("_id"));
-                        name = c.getString(c.getColumnIndex("display_name"));
-                        time = new Timestamp(0);
-                        if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2) {
-                            Cursor c1 = getContentResolver().query(ContactsContract.DeletedContacts.CONTENT_URI, null, "contact_id=?", new String[]{id}, null);
-                            c1.moveToNext();
-                            contact_id = c1.getString(c1.getColumnIndex("contact_id"));
-                            contact_deleted_timestamp = c1.getString(c1.getColumnIndex("contact_deleted_timestamp"));
-                            time = new Timestamp(Long.valueOf(contact_deleted_timestamp));
-
-                        }
-                        Log.d(TAG, "id: " + id + " name: " + name + " time: " + time.toString());
-
-                        ListIterator<MyContact> iter = list.listIterator();
-                        while(iter.hasNext()){
-                            if(iter.next()._id.equals(id)){
-                                Log.d(TAG, "id: " + id + " Remove " + name + " from list");
-                                iter.remove();
-                                break;
-                            }
-                        }
-                        Log.d(TAG, "list size: " + list.size());
-
-                    }
-                }
 
             }
             mContactCount = currentCount;
 
             return "";
+        }
+
+        private List<MyContact> updateListContacts(List<MyContact> list, List<MyContact> listDeletedContact) {
+            String id;
+            for (MyContact deletedContact:listDeletedContact) {
+                id = deletedContact._id;
+                ListIterator<MyContact> iter = list.listIterator();
+                while(iter.hasNext()){
+                    if(iter.next()._id.equals(id)){
+                        Log.d(TAG, "id: " + id + " Remove " + name + " from listContacts");
+                        iter.remove();
+                        break;
+                    }
+                }
+
+            }
+            return list;
+        }
+
+        private List<MyContact> queryAddedOrUpdatedContact() {
+            List<MyContact> list = new ArrayList<>();
+            //                final String WHERE_MODIFIED = "( "+ ContactsContract.RawContacts.DELETED + "=1 OR "+ ContactsContract.RawContacts.DIRTY + "=1 )";
+            Cursor c = getContentResolver().query(ContactsContract.RawContacts.CONTENT_URI,
+                    null,
+                    "( dirty=1 )",
+                    null,
+                    null);
+            while (c.moveToNext()){
+                name = c.getString(c.getColumnIndex(ContactsContract.Contacts.DISPLAY_NAME));
+                id = c.getString(c.getColumnIndex(ContactsContract.Contacts._ID));
+                Log.d(TAG, "id: " + id + " name: " + name);
+                ArrayList<String> listPhoneNum = queryListPhoneNum(id);
+                MyContact contact = new MyContact(id,name,listPhoneNum);
+                list.add(contact);
+            }
+            c.close();
+            return list;
+        }
+
+        private List<MyContact> queryDeletedContact() {
+            List<MyContact> list = new ArrayList<>();
+            Cursor c = getContentResolver().query(ContactsContract.RawContacts.CONTENT_URI, null, "deleted = 1", null, null);
+            while(c.moveToNext()){
+
+                id = c.getString(c.getColumnIndex("_id"));
+                name = c.getString(c.getColumnIndex("display_name"));
+                time = new Timestamp(0);
+                if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2) {
+//                            Cursor c1 = getContentResolver().query(ContactsContract.DeletedContacts.CONTENT_URI, null, "contact_id=?", new String[]{id}, null);
+                    Cursor c1 = getContentResolver().query(ContactsContract.DeletedContacts.CONTENT_URI, null, "contact_id="+id, null, null);
+                    c1.moveToNext();
+                    contact_id = c1.getString(c1.getColumnIndex("contact_id"));
+                    contact_deleted_timestamp = c1.getString(c1.getColumnIndex("contact_deleted_timestamp"));
+                    time = new Timestamp(Long.valueOf(contact_deleted_timestamp));
+
+                }
+                Log.d(TAG, "id: " + id + " name: " + name + " time: " + time.toString());
+                MyContact deletedContact = new MyContact(id, name, contact_deleted_timestamp);
+                list.add(deletedContact);
+            }
+            c.close();
+            return list;
+        }
+
+        private ArrayList<String> queryListPhoneNum(String id) {
+            ArrayList<String> phones = new ArrayList<String>();
+
+//            Cursor cursor = getContentResolver().query(ContactsContract.CommonDataKinds.Phone.CONTENT_URI, null, "contact_id = ?", new String[]{id}, null);
+            Cursor cursor = getContentResolver().query(ContactsContract.CommonDataKinds.Phone.CONTENT_URI, null, "contact_id = " + id, null, null);
+
+            while (cursor.moveToNext())
+            {
+                phoneNumber = cursor.getString(cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER));
+                phones.add(phoneNumber);
+                Log.d(TAG, "Phone Number: " + phoneNumber);
+            }
+            cursor.close();
+            return phones;
         }
 
         @Override
@@ -307,7 +338,8 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private class MyContact {
-        public String _id,name;
+        private ArrayList<String> listPhoneNum;
+        private String _id,name,contact_deleted_timestamp;
 
         public MyContact() {
         }
@@ -315,6 +347,19 @@ public class MainActivity extends AppCompatActivity {
         public MyContact(String id, String name) {
             _id = id;
             this.name = name;
+        }
+
+        public MyContact(String id, String name, String contact_deleted_timestamp) {
+            _id = id;
+            this.name = name;
+            this.contact_deleted_timestamp = contact_deleted_timestamp;
+
+        }
+
+        public MyContact(String id, String name, ArrayList<String> listPhoneNum) {
+            _id = id;
+            this.name = name;
+            this.listPhoneNum = listPhoneNum;
         }
     }
 }
