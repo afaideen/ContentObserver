@@ -282,7 +282,7 @@ public class MainActivity extends AppCompatActivity {
                 ListIterator<MyContact> iter = list.listIterator();
                 while(iter.hasNext()){
                     if(iter.next()._id.equals(id)){
-                        Log.d(TAG, "id: " + id + " Remove " + name + " from listContacts");
+                        Log.d(TAG, "id: " + id + " Remove " + deletedContact.name + " from listContacts");
                         iter.remove();
                         break;
                     }
@@ -292,28 +292,31 @@ public class MainActivity extends AppCompatActivity {
             return list;
         }
         private MyContact queryAddedContact() {
+            String name,id,contact_last_updated_timestamp;
 
             //                final String WHERE_MODIFIED = "( "+ ContactsContract.RawContacts.DELETED + "=1 OR "+ ContactsContract.RawContacts.DIRTY + "=1 )";
-            Cursor c = getContentResolver().query(ContactsContract.RawContacts.CONTENT_URI,
-                    null,
-                    "( dirty=1 )",
-                    null,
-                    null);
+            Cursor c = getContentResolver().query(ContactsContract.RawContacts.CONTENT_URI, null, "( dirty=1 )", null, null);
 
-            c.moveToLast();
+            c.moveToLast();//important moment! new added contact always located at last position
             name = c.getString(c.getColumnIndex(ContactsContract.Contacts.DISPLAY_NAME));
             id = c.getString(c.getColumnIndex(ContactsContract.Contacts._ID));
-            Log.d(TAG, "id: " + id + " name: " + name);
-            ArrayList<String> listPhoneNum = queryListPhoneNum(id);
-            MyContact contact = new MyContact(id,name,listPhoneNum);
-
-
             c.close();
+            Cursor c1 = getContentResolver().query(ContactsContract.Contacts.CONTENT_URI, null, "_id="+id, null, null);
+            c1.moveToNext();
+            contact_last_updated_timestamp = c1.getString(c1.getColumnIndex(ContactsContract.Contacts.CONTACT_LAST_UPDATED_TIMESTAMP));
+            c1.close();
+            Timestamp time = new Timestamp(Long.valueOf(contact_last_updated_timestamp));
+            Log.d(TAG, "id: " + id + " name: " + name+ " contact_last_updated_timestamp: " + time);
+            ArrayList<String> listPhoneNum = queryListPhoneNum(id);
+
+            MyContact contact = new MyContact(id, name, listPhoneNum, Long.valueOf(contact_last_updated_timestamp), null);
+
+
             return contact;
         }
 
         private MyContact queryUpdatedContact() {
-            String name,id;
+            String name,id,contact_last_updated_timestamp;
 //            final String WHERE_MODIFIED = "( "+ ContactsContract.RawContacts.DELETED + "=1 OR "+ ContactsContract.RawContacts.DIRTY + "=1 )";
             Cursor c;
             MyContact contact = null;
@@ -332,9 +335,13 @@ public class MainActivity extends AppCompatActivity {
                 c.moveToNext();
                 name = c.getString(c.getColumnIndex(ContactsContract.Contacts.DISPLAY_NAME));
                 id = c.getString(c.getColumnIndex(ContactsContract.Contacts._ID));
-                Log.d(TAG, "id: " + id + " name: " + name);
+                contact_last_updated_timestamp = c.getString(c.getColumnIndex(ContactsContract.Contacts.CONTACT_LAST_UPDATED_TIMESTAMP));
+                Timestamp time = new Timestamp(Long.valueOf(contact_last_updated_timestamp));
+                Log.d(TAG, "id: " + id + " name: " + name+ " contact_last_updated_timestamp: " + time);
                 ArrayList<String> listPhoneNum = queryListPhoneNum(id);
-                contact = new MyContact(id, name, listPhoneNum);
+                contact = new MyContact(id, name, listPhoneNum, Long.valueOf(contact_last_updated_timestamp), null);
+            }else{
+                Log.d(TAG, "queryUpdatedContact: failed");
             }
 
             c.close();
@@ -343,26 +350,24 @@ public class MainActivity extends AppCompatActivity {
 
         private List<MyContact> queryDeletedContact() {
             List<MyContact> list = new ArrayList<>();
-            Cursor c = getContentResolver().query(ContactsContract.RawContacts.CONTENT_URI, null, "deleted = 1", null, null);
+//            Cursor c = getContentResolver().query(ContactsContract.RawContacts.CONTENT_URI, null, "deleted = 1", null, null);
+            TimeZone.setDefault(TimeZone.getTimeZone(mytimezone));
+            long contact_deleted_timestamp = (long) (System.currentTimeMillis() - 1000);//~1s back
+            Timestamp time = new Timestamp(contact_deleted_timestamp);
+//            if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2) {
+            Cursor c = getContentResolver().query(ContactsContract.DeletedContacts.CONTENT_URI, null, "contact_deleted_timestamp >= "+ contact_deleted_timestamp, null, "contact_deleted_timestamp DESC");
             while(c.moveToNext()){
+                String id = c.getString(c.getColumnIndex("contact_id"));
+                String scontact_deleted_timestamp = c.getString(c.getColumnIndex("contact_deleted_timestamp"));
+                Timestamp time_deleted = new Timestamp(Long.valueOf(scontact_deleted_timestamp));
+                Cursor c1 = getContentResolver().query(ContactsContract.RawContacts.CONTENT_URI, null, "_id="+id, null, null);
+                c1.moveToFirst();
+                String name = c1.getString(c1.getColumnIndex("display_name"));
+                c1.close();
+                Log.d(TAG, "id: " + id + " name: " + name + " time: " + time_deleted.toString());
+                ArrayList<String> listPhoneNum = queryListPhoneNum(id);
 
-                id = c.getString(c.getColumnIndex("_id"));
-                name = c.getString(c.getColumnIndex("display_name"));
-                time = new Timestamp(0);
-                if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2) {
-//                            Cursor c1 = getContentResolver().query(ContactsContract.DeletedContacts.CONTENT_URI, null, "contact_id=?", new String[]{id}, null);
-                    Cursor c1 = getContentResolver().query(ContactsContract.DeletedContacts.CONTENT_URI, null, "contact_id="+id, null, null);
-
-                    if(c1.getCount() > 0) {
-                        c1.moveToNext();
-                        contact_id = c1.getString(c1.getColumnIndex("contact_id"));
-                        contact_deleted_timestamp = c1.getString(c1.getColumnIndex("contact_deleted_timestamp"));
-                        time = new Timestamp(Long.valueOf(contact_deleted_timestamp));
-                    }
-
-                }
-                Log.d(TAG, "id: " + id + " name: " + name + " time: " + time.toString());
-                MyContact deletedContact = new MyContact(id, name, contact_deleted_timestamp);
+                MyContact deletedContact = new MyContact(id, name, listPhoneNum, contact_deleted_timestamp);
                 list.add(deletedContact);
             }
             c.close();
@@ -393,7 +398,8 @@ public class MainActivity extends AppCompatActivity {
 
     private class MyContact {
         private ArrayList<String> listPhoneNum;
-        private String _id,name,contact_deleted_timestamp;
+        private String _id,name;
+        private Long contact_deleted_timestamp, contact_last_updated_timestamp;
 
         public MyContact() {
         }
@@ -403,7 +409,7 @@ public class MainActivity extends AppCompatActivity {
             this.name = name;
         }
 
-        public MyContact(String id, String name, String contact_deleted_timestamp) {
+        public MyContact(String id, String name, Long contact_deleted_timestamp) {
             _id = id;
             this.name = name;
             this.contact_deleted_timestamp = contact_deleted_timestamp;
@@ -415,6 +421,21 @@ public class MainActivity extends AppCompatActivity {
             this.name = name;
             this.listPhoneNum = listPhoneNum;
         }
+
+        public MyContact(String id, String name, ArrayList<String> listPhoneNum, Long contact_deleted_timestamp) {
+            _id = id;
+            this.name = name;
+            this.listPhoneNum = listPhoneNum;
+            this.contact_deleted_timestamp = contact_deleted_timestamp;
+        }
+        public MyContact(String id, String name, ArrayList<String> listPhoneNum, Long contact_last_updated_timestamp, Long contact_deleted_timestamp) {
+            _id = id;
+            this.name = name;
+            this.listPhoneNum = listPhoneNum;
+            this.contact_last_updated_timestamp = contact_last_updated_timestamp;
+            this.contact_deleted_timestamp = contact_deleted_timestamp;
+        }
+
     }
 }
 
